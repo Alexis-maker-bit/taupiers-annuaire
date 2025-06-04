@@ -1806,59 +1806,57 @@ EOT;
     }
 
     /**
-     * Fonction pour afficher les produits WooCommerce mis en avant sous forme de slider.
-     * Cette fonction est maintenant une méthode de la classe Gestion_Taupiers.
+     * Fonction pour afficher les produits WooCommerce mis en avant sous forme de slider Swiper.
      */
-    public function display_taupe_products_highlighted() {
+    public function display_taupe_products_highlighted() { //
         if (!class_exists('WooCommerce')) {
             return '<p>WooCommerce n\'est pas actif. Impossible d\'afficher les produits.</p>';
         }
 
-        // Arguments pour WP_Query pour récupérer des produits aléatoires et non les plus chers.
-        // On veut des produits qui peuvent être mis en avant, pas nécessairement les plus chers.
         $args = array(
             'post_type'      => 'product',
-            'posts_per_page' => 5, // On en veut 5
-            'orderby'        => 'rand', // Aléatoire
+            'posts_per_page' => 8, // Un peu plus pour un slider Swiper
+            'orderby'        => 'rand',
             'meta_query'     => array(
                 'relation' => 'OR',
                 array(
-                    'key'     => '_featured', // Produits mis en avant
+                    'key'     => '_featured',
                     'value'   => 'yes',
                     'compare' => '=',
                 ),
-                // Alternativement, si pas de produits en vedette, prendre des produits en stock
                 array(
                     'key'     => '_stock_status',
                     'value'   => 'instock',
                     'compare' => '=',
                 ),
             ),
-            'post_status' => 'publish', // Only published products
+            'post_status' => 'publish',
         );
         $loop = new WP_Query($args);
         $products = [];
 
-        // Récupération des produits
         if ($loop->have_posts()) {
             while ($loop->have_posts()) {
                 $loop->the_post();
                 global $product;
-                $products[] = $product;
+                if ($product instanceof WC_Product) { // Vérifier que c'est bien un objet produit WC
+                    $products[] = clone $product; // Cloner pour éviter les problèmes de référence
+                }
             }
         }
         wp_reset_postdata();
 
-        // If less than 5 products are found, try to complete with other random in-stock products
-        if (count($products) < 5) {
-            $remaining_needed = 5 - count($products);
+        // Compléter si moins de produits que souhaité (par exemple 8)
+        $desired_product_count = 8;
+        if (count($products) < $desired_product_count) {
+            $remaining_needed = $desired_product_count - count($products);
             $existing_product_ids = array_map(function($p) { return $p->get_id(); }, $products);
 
             $args_fallback = array(
                 'post_type'      => 'product',
                 'posts_per_page' => $remaining_needed,
                 'orderby'        => 'rand',
-                'post__not_in'   => $existing_product_ids, // Exclude those already found
+                'post__not_in'   => $existing_product_ids,
                 'meta_query'     => array(
                     array(
                         'key'     => '_stock_status',
@@ -1866,22 +1864,27 @@ EOT;
                         'compare' => '=',
                     ),
                 ),
-                'post_status' => 'publish', // Only published products
+                'post_status' => 'publish',
             );
             $fallback_loop = new WP_Query($args_fallback);
             if ($fallback_loop->have_posts()) {
                 while ($fallback_loop->have_posts()) {
                     $fallback_loop->the_post();
                     global $product;
-                    $products[] = $product;
+                     if ($product instanceof WC_Product) {
+                        $products[] = clone $product;
+                    }
                 }
             }
             wp_reset_postdata();
         }
 
+        if (empty($products)) {
+            return '<p>Aucun produit à afficher pour le moment.</p>';
+        }
+
         ob_start();
 
-        // Introductions pour le slider de produits
         $introductions = [
             'Découvrez aussi les pièges à taupe QuickTaupe !',
             'Vous préférez piéger vous-mêmes ? Voici nos solutions !',
@@ -1890,39 +1893,24 @@ EOT;
         $intro_text = $introductions[array_rand($introductions)];
         ?>
 
-        <div class="taupe-product-section" itemscope itemtype="https://schema.org/Product">
-            <meta itemprop="name" content="Pièges à Taupe Professionnels">
+        <div class="taupe-product-section" itemscope itemtype="https://schema.org/ItemList"> {/* Changed to ItemList for a list of products */}
+            <meta itemprop="name" content="Pièges à Taupe Professionnels Recommandés">
             <meta itemprop="description" content="Découvrez notre sélection de pièges à taupe professionnels et écologiques pour une solution durable.">
-            <meta itemprop="image" content="<?php echo esc_url(plugin_dir_url(__FILE__) . 'assets/images/piege-taupe-generique.jpg'); ?>">
             
-            <?php
-            // Calculate aggregate rating for the *general* product category if possible
-            // This would require querying all products in relevant categories and their reviews
-            // For now, we'll focus on individual product ratings in the loop below.
-            // This top-level Product schema acts more as a category/overview page for products.
-            ?>
-
-            <div itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-                <meta itemprop="price" content="0.00">
-                <meta itemprop="priceCurrency" content="EUR">
-                <meta itemprop="availability" content="https://schema.org/InStock">
-                <meta itemprop="url" content="<?php echo esc_url(home_url('/produits-taupes/')); ?>">
-            </div>
-
             <p style="font-size: 1.2rem; font-weight: 600; color: var(--primary-color); margin-top: 0;"><?php echo esc_html($intro_text); ?></p>
             
-            <div class="product-slider-container">
-                <div class="product-slider-wrapper">
-                    <?php foreach ($products as $product) {
-                        $average_rating = $product->get_average_rating();
-                        $review_count = $product->get_review_count();
-                        $sale_price_dates_to = $product->get_date_on_sale_to();
+            <div class="swiper product-slider"> {/* Classe pour ciblage Swiper JS */}
+                <div class="swiper-wrapper">
+                    <?php foreach ($products as $product_obj) :
+                        $average_rating = $product_obj->get_average_rating();
+                        $review_count = $product_obj->get_review_count();
+                        $sale_price_dates_to = $product_obj->get_date_on_sale_to() ? $product_obj->get_date_on_sale_to()->date('Y-m-d') : null;
                         ?>
-                        <div class="product-item" itemscope itemtype="https://schema.org/Product">
-                            <meta itemprop="name" content="<?php echo esc_attr($product->get_name()); ?>">
-                            <meta itemprop="url" content="<?php echo esc_url(get_permalink($product->get_id())); ?>">
-                            <meta itemprop="image" content="<?php echo esc_url(wp_get_attachment_image_url($product->get_image_id(), 'medium')); ?>">
-                            <meta itemprop="description" content="<?php echo esc_attr(wp_trim_words($product->get_description(), 15, '...')); ?>">
+                        <div class="swiper-slide product-item" itemprop="itemListElement" itemscope itemtype="https://schema.org/Product">
+                            <meta itemprop="name" content="<?php echo esc_attr($product_obj->get_name()); ?>">
+                            <link itemprop="url" href="<?php echo esc_url(get_permalink($product_obj->get_id())); ?>"> {/* Use link for URL */}
+                            <link itemprop="image" href="<?php echo esc_url(wp_get_attachment_image_url($product_obj->get_image_id(), 'medium')); ?>"> {/* Use link for image */}
+                            <meta itemprop="description" content="<?php echo esc_attr(wp_trim_words($product_obj->get_short_description() ?: $product_obj->get_description(), 15, '...')); ?>">
 
                             <?php if ($review_count > 0) : ?>
                                 <div itemprop="aggregateRating" itemscope itemtype="https://schema.org/AggregateRating">
@@ -1934,199 +1922,33 @@ EOT;
                             <?php endif; ?>
 
                             <div itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-                                <meta itemprop="url" content="<?php echo esc_url(get_permalink($product->get_id())); ?>">
+                                <link itemprop="url" href="<?php echo esc_url(get_permalink($product_obj->get_id())); ?>"> {/* Offer URL */}
                                 <meta itemprop="priceCurrency" content="<?php echo esc_attr(get_woocommerce_currency()); ?>">
-                                <meta itemprop="price" content="<?php echo esc_attr($product->get_price()); ?>">
-                                <meta itemprop="availability" content="https://schema.org/<?php echo $product->is_in_stock() ? 'InStock' : 'OutOfStock'; ?>">
+                                <meta itemprop="price" content="<?php echo esc_attr($product_obj->get_price()); ?>">
+                                <link itemprop="availability" href="https://schema.org/<?php echo $product_obj->is_in_stock() ? 'InStock' : 'OutOfStock'; ?>">
                                 <?php if ($sale_price_dates_to) : ?>
-                                    <meta itemprop="priceValidUntil" content="<?php echo esc_attr($sale_price_dates_to->format('Y-m-d')); ?>">
+                                    <meta itemprop="priceValidUntil" content="<?php echo esc_attr($sale_price_dates_to); ?>">
                                 <?php endif; ?>
                             </div>
 
-                            <a href="<?php echo esc_url(get_permalink($product->get_id())); ?>" title="<?php echo esc_attr($product->get_name()); ?>">
-                                <?php echo $product->get_image('medium', array('class' => 'product-thumbnail-img')); ?>
-                                <div class="product-title"><?php echo esc_html(wp_trim_words($product->get_name(), 3, '...')); ?></div>
-                                <div class="product-price"><?php echo $product->get_price_html(); ?></div>
-                                <button class="buy-button">Découvrir</button>
+                            <a href="<?php echo esc_url(get_permalink($product_obj->get_id())); ?>" title="<?php echo esc_attr($product_obj->get_name()); ?>">
+                                <?php echo $product_obj->get_image('woocommerce_thumbnail', array('class' => 'product-thumbnail-img')); // Utiliser une taille d'image WC ?>
+                                <div class="product-title"><?php echo esc_html(wp_trim_words($product_obj->get_name(), 5, '...')); ?></div>
+                                <div class="product-price"><?php echo $product_obj->get_price_html(); ?></div>
+                                <span class="buy-button">Découvrir</span> {/* Changé en span car le <a> parent gère le lien */}
                             </a>
                         </div>
-                    <?php } ?>
+                    <?php endforeach; ?>
                 </div>
-                <?php if (count($products) > 1) : // Afficher les contrôles seulement si plus d'un produit ?>
-                    <button class="product-prev-btn" aria-label="Produit précédent">&laquo;</button>
-                    <button class="product-next-btn" aria-label="Produit suivant">&raquo;</button>
+                <?php if (count($products) > 1) : ?>
+                    <div class="swiper-button-prev product-slider-prev"></div>
+                    <div class="swiper-button-next product-slider-next"></div>
+                    {/* Optionnel: Pagination Swiper
+                    <div class="swiper-pagination product-slider-pagination"></div>
+                    */}
                 <?php endif; ?>
             </div>
         </div>
-        <style>
-            /* Styles pour le slider de produits - à ajouter dans votre fichier CSS principal pour plus de propreté */
-            .taupe-product-section {
-                padding: 20px;
-                background-color: #ffffff;
-                border-radius: 10px;
-                margin: 30px 0;
-                border: 3px dashed #ffa500;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                position: relative;
-            }
-            .taupe-product-section:before {
-                content: "🎯 En avant !";
-                position: absolute;
-                top: -15px;
-                left: 20px;
-                background-color: #ffa500;
-                color: white;
-                font-size: 12px;
-                font-weight: bold;
-                padding: 3px 8px;
-                border-radius: 5px;
-            }
-            .product-slider-container {
-                position: relative;
-                overflow: hidden;
-                padding: 0 40px; /* Espace pour les boutons de navigation */
-            }
-            .product-slider-wrapper {
-                display: flex;
-                overflow-x: auto;
-                scroll-snap-type: x mandatory;
-                -webkit-overflow-scrolling: touch; /* pour iOS */
-                scrollbar-width: none; /* Firefox */
-                -ms-overflow-style: none;  /* IE and Edge */
-            }
-            .product-slider-wrapper::-webkit-scrollbar {
-                display: none; /* Chrome, Safari, Opera */
-            }
-            .product-item {
-                flex: 0 0 auto;
-                width: 180px; /* Taille fixe pour chaque élément */
-                text-align: center;
-                border-radius: 8px;
-                padding: 10px;
-                background: #f9f9f9;
-                scroll-snap-align: center;
-                border: 1px solid #ddd;
-                transition: transform 0.3s, box-shadow 0.3s;
-                margin-right: 10px; /* Espacement entre les produits */
-            }
-            .product-item:last-child {
-                margin-right: 0;
-            }
-            .product-item:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-            }
-            .product-item img {
-                max-width: 100%;
-                height: auto;
-                border-radius: 5px;
-            }
-            .product-title {
-                font-size: 14px;
-                color: #333;
-                margin: 5px 0;
-                min-height: 42px; /* Pour éviter le décalage si le titre est sur 2 lignes */
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .product-price {
-                font-size: 13px;
-                color: #888;
-                margin-bottom: 10px;
-            }
-            .buy-button {
-                font-size: 12px;
-                background-color: #28a745;
-                color: white;
-                border: none;
-                padding: 8px 12px;
-                border-radius: 5px;
-                cursor: pointer;
-                transition: background-color 0.3s;
-                width: 100%;
-                box-sizing: border-box;
-            }
-            .buy-button:hover {
-                background-color: #218838;
-            }
-
-            .product-slider-controls {
-                position: absolute;
-                top: 50%;
-                width: 100%;
-                display: flex;
-                justify-content: space-between;
-                transform: translateY(-50%);
-                pointer-events: none; /* Permet de cliquer à travers les boutons si besoin */
-            }
-            .product-prev-btn, .product-next-btn {
-                background-color: rgba(0, 0, 0, 0.5);
-                color: white;
-                border: none;
-                padding: 10px 15px;
-                cursor: pointer;
-                border-radius: 50%;
-                font-size: 1.5rem;
-                line-height: 1;
-                z-index: 10;
-                pointer-events: auto; /* Réactive les clics sur les boutons */
-            }
-            .product-prev-btn {
-                left: 0;
-                border-top-left-radius: 0;
-                border-bottom-left-radius: 0;
-            }
-            .product-next-btn {
-                right: 0;
-                border-top-right-radius: 0;
-                border-bottom-right-radius: 0;
-            }
-
-            @media (max-width: 768px) {
-                .product-item {
-                    width: 150px;
-                }
-                .product-slider-container {
-                    padding: 0 20px;
-                }
-            }
-            @media (max-width: 600px) {
-                .product-item {
-                    width: 130px;
-                }
-            }
-        </style>
-        <script>
-            jQuery(document).ready(function($) {
-                var sliderWrapper = $('.product-slider-wrapper');
-                var prevBtn = $('.product-prev-btn');
-                var nextBtn = $('.product-next-btn');
-                var scrollAmount = 200; // Ajustez la quantité de défilement
-
-                nextBtn.on('click', function() {
-                    sliderWrapper.scrollLeft(sliderWrapper.scrollLeft() + scrollAmount);
-                });
-
-                prevBtn.on('click', function() {
-                    sliderWrapper.scrollLeft(sliderWrapper.scrollLeft() - scrollAmount);
-                });
-
-                // Optionnel: masquer/afficher les boutons si le début/fin est atteint
-                sliderWrapper.on('scroll', function() {
-                    if (sliderWrapper.scrollLeft() === 0) {
-                        prevBtn.hide();
-                    } else {
-                        prevBtn.show();
-                    }
-                    if (sliderWrapper.scrollLeft() + sliderWrapper.innerWidth() >= sliderWrapper[0].scrollWidth) {
-                        nextBtn.hide();
-                    } else {
-                        nextBtn.show();
-                    }
-                }).trigger('scroll'); // Déclencher au chargement pour l'état initial
-            });
-        </script>
         <?php
         return ob_get_clean();
     }

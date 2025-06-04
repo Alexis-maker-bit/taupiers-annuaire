@@ -3,14 +3,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- GESTION DES SLIDERS UNIFIÉE AVEC SWIPER.JS ---
 
     // 1. Slider pour les "Produits Recommandés"
+    // Ce bloc est déjà correct pour la nouvelle structure HTML générée par PHP.
     const productSliderElement = document.querySelector('.taupe-product-section .product-slider');
     if (productSliderElement) {
         const swiperProducts = new Swiper(productSliderElement, {
             slidesPerView: 2,
             spaceBetween: 15,
             navigation: {
-                nextEl: '.taupe-product-section .product-slider-next',
-                prevEl: '.taupe-product-section .product-slider-prev',
+                nextEl: '.taupe-product-section .product-slider-next', // Doit correspondre aux classes dans le HTML Swiper
+                prevEl: '.taupe-product-section .product-slider-prev', // Doit correspondre aux classes dans le HTML Swiper
             },
             breakpoints: {
                 640: { slidesPerView: 3, spaceBetween: 20 },
@@ -205,6 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (filter === 'recent') {
                     filteredItems.sort((a, b) => parseInt(b.dataset.date) - parseInt(a.dataset.date));
                 } else if (filter === 'positive' || filter === 'all') {
+                    // Trier par note (décroissant) puis par date (décroissant)
                     filteredItems.sort((a, b) => {
                         const ratingDiff = parseInt(b.dataset.rating) - parseInt(a.dataset.rating);
                         return ratingDiff !== 0 ? ratingDiff : parseInt(b.dataset.date) - parseInt(a.dataset.date);
@@ -227,31 +229,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const feedbackSuccess = document.querySelector('.review-submission-feedback');
 
     if (reviewForm && typeof taupier_ajax !== 'undefined') {
-        const formMessage = reviewForm.querySelector('.form-message'); // Définir formMessage ici
+        const formMessage = reviewForm.querySelector('.form-message'); 
 
         reviewForm.addEventListener('submit', function(e) {
             e.preventDefault();
             let isValid = true;
             const formData = new FormData(this);
 
+            // Validation des champs requis
             this.querySelectorAll('[required]').forEach(field => {
-                if (!field.value.trim() && field.type !== 'radio') { // Ne pas vérifier les radios ici pour la valeur
+                if (field.type === 'radio') { // Pour les étoiles de notation
+                    const ratingGroup = this.querySelector('input[name="rating"]:checked');
+                    if (!ratingGroup) {
+                        const ratingFieldset = this.querySelector('.rating-field');
+                        if (ratingFieldset) ratingFieldset.style.border = '1px solid #e74c3c'; // Ou autre indicateur visuel
+                        isValid = false;
+                    } else {
+                        const ratingFieldset = this.querySelector('.rating-field');
+                        if (ratingFieldset) ratingFieldset.style.border = '';
+                    }
+                } else if (!field.value.trim()) {
                     field.style.borderColor = '#e74c3c';
                     isValid = false;
                 } else {
                     field.style.borderColor = '';
                 }
             });
-
-            const ratingInput = this.querySelector('input[name="rating"]:checked');
-            const ratingFieldset = this.querySelector('.rating-field');
-            if (!ratingInput) {
-                if (ratingFieldset) ratingFieldset.style.border = '1px solid #e74c3c';
-                isValid = false;
-            } else {
-                if (ratingFieldset) ratingFieldset.style.border = '';
-            }
-
+            
             if (reviewTextarea && reviewTextarea.value.length > MAX_CHARS) {
                 reviewTextarea.style.borderColor = '#e74c3c';
                 if (formMessage) formMessage.innerHTML = '<div style="color: #e74c3c; margin-top: 1rem;">Votre avis dépasse la limite de caractères.</div>';
@@ -281,9 +285,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     reviewForm.style.display = 'none';
                     if (feedbackSuccess) feedbackSuccess.style.display = 'block';
                     reviewForm.reset();
+                     if (charCounter) charCounter.textContent = `0/${MAX_CHARS} caractères`; // Réinitialiser le compteur
                 } else {
-                    let errorMessage = data.data.message || 'Une erreur est survenue.';
-                    if (data.data.errors) {
+                    let errorMessage = data.data && data.data.message ? data.data.message : 'Une erreur est survenue.';
+                    if (data.data && data.data.errors && Array.isArray(data.data.errors)) {
                         errorMessage += '<ul>';
                         data.data.errors.forEach(error => { errorMessage += `<li>- ${error}</li>`; });
                         errorMessage += '</ul>';

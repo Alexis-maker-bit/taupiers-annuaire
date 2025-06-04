@@ -1893,13 +1893,13 @@ EOT;
         $intro_text = $introductions[array_rand($introductions)];
         ?>
 
-        <div class="taupe-product-section" itemscope itemtype="https://schema.org/ItemList"> {/* Changed to ItemList for a list of products */}
+        <div class="taupe-product-section" itemscope itemtype="https://schema.org/ItemList"> 
             <meta itemprop="name" content="Pièges à Taupe Professionnels Recommandés">
             <meta itemprop="description" content="Découvrez notre sélection de pièges à taupe professionnels et écologiques pour une solution durable.">
             
             <p style="font-size: 1.2rem; font-weight: 600; color: var(--primary-color); margin-top: 0;"><?php echo esc_html($intro_text); ?></p>
             
-            <div class="swiper product-slider"> {/* Classe pour ciblage Swiper JS */}
+            <div class="swiper product-slider"> 
                 <div class="swiper-wrapper">
                     <?php foreach ($products as $product_obj) :
                         $average_rating = $product_obj->get_average_rating();
@@ -1908,8 +1908,8 @@ EOT;
                         ?>
                         <div class="swiper-slide product-item" itemprop="itemListElement" itemscope itemtype="https://schema.org/Product">
                             <meta itemprop="name" content="<?php echo esc_attr($product_obj->get_name()); ?>">
-                            <link itemprop="url" href="<?php echo esc_url(get_permalink($product_obj->get_id())); ?>"> {/* Use link for URL */}
-                            <link itemprop="image" href="<?php echo esc_url(wp_get_attachment_image_url($product_obj->get_image_id(), 'medium')); ?>"> {/* Use link for image */}
+                            <link itemprop="url" href="<?php echo esc_url(get_permalink($product_obj->get_id())); ?>"> 
+                            <link itemprop="image" href="<?php echo esc_url(wp_get_attachment_image_url($product_obj->get_image_id(), 'medium')); ?>"> 
                             <meta itemprop="description" content="<?php echo esc_attr(wp_trim_words($product_obj->get_short_description() ?: $product_obj->get_description(), 15, '...')); ?>">
 
                             <?php if ($review_count > 0) : ?>
@@ -1922,7 +1922,7 @@ EOT;
                             <?php endif; ?>
 
                             <div itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-                                <link itemprop="url" href="<?php echo esc_url(get_permalink($product_obj->get_id())); ?>"> {/* Offer URL */}
+                                <link itemprop="url" href="<?php echo esc_url(get_permalink($product_obj->get_id())); ?>"> 
                                 <meta itemprop="priceCurrency" content="<?php echo esc_attr(get_woocommerce_currency()); ?>">
                                 <meta itemprop="price" content="<?php echo esc_attr($product_obj->get_price()); ?>">
                                 <link itemprop="availability" href="https://schema.org/<?php echo $product_obj->is_in_stock() ? 'InStock' : 'OutOfStock'; ?>">
@@ -1935,7 +1935,7 @@ EOT;
                                 <?php echo $product_obj->get_image('woocommerce_thumbnail', array('class' => 'product-thumbnail-img')); // Utiliser une taille d'image WC ?>
                                 <div class="product-title"><?php echo esc_html(wp_trim_words($product_obj->get_name(), 5, '...')); ?></div>
                                 <div class="product-price"><?php echo $product_obj->get_price_html(); ?></div>
-                                <span class="buy-button">Découvrir</span> {/* Changé en span car le <a> parent gère le lien */}
+                                <span class="buy-button">Découvrir</span> 
                             </a>
                         </div>
                     <?php endforeach; ?>
@@ -1943,9 +1943,7 @@ EOT;
                 <?php if (count($products) > 1) : ?>
                     <div class="swiper-button-prev product-slider-prev"></div>
                     <div class="swiper-button-next product-slider-next"></div>
-                    {/* Optionnel: Pagination Swiper
-                    <div class="swiper-pagination product-slider-pagination"></div>
-                    */}
+                    
                 <?php endif; ?>
             </div>
         </div>

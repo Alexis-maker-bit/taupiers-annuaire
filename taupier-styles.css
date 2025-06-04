@@ -286,17 +286,17 @@
     overflow: hidden; /* Très important pour cacher les items en dehors du viewport */
 }
 .product-slider {
-    display: flex;
-    overflow-x: auto; /* Permet le défilement horizontal manuel */
-    gap: 10px; /* Espace entre les produits */
-    scroll-snap-type: x mandatory; /* Snap aux éléments */
-    -webkit-overflow-scrolling: touch; /* Pour iOS */
-    scrollbar-width: none; /* Cache la scrollbar sur Firefox */
-    -ms-overflow-style: none; /* Cache la scrollbar sur IE/Edge */
-    scroll-behavior: smooth; /* Défilement doux */
+    display: flex; /* CONFLIT */
+    overflow-x: auto; /* CONFLIT - Permet le défilement horizontal manuel */
+    gap: 10px; /* CONFLIT - Swiper utilise spaceBetween dans JS */
+    scroll-snap-type: x mandatory; /* CONFLIT */
+    -webkit-overflow-scrolling: touch; /* OK, mais Swiper gère aussi le touch */
+    scrollbar-width: none; /* CONFLIT */
+    -ms-overflow-style: none; /* CONFLIT */
+    scroll-behavior: smooth; /* CONFLIT */
 }
 .product-slider::-webkit-scrollbar {
-    display: none; /* Cache la scrollbar sur Chrome/Safari */
+    display: none; /* CONFLIT */
 }
 .product-item {
     flex: 0 0 auto; /* Ne pas étirer/rétrécir, garder la taille définie */
